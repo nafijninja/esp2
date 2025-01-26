@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAFIJ RAHAMAN</TITLE>
+    <link rel= "icon" type= "image/x-icon" href="nafij.png">
+  <!--  <title>Control Lights & Fans</title>
+ -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            background-size: cover;
+            background-attachment: fixed;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 90%;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 140px;
+            height: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-on {
+            background-color: #3E5D5F;
+        }
+
+        .btn-off {
+            background-color: #D32F2F;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .status {
+            font-size: 1.2em;
+            margin-top: 20px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>Control Lights & Fans</h1>
+
+    <div class="button-container">
+        <button class="btn btn-on" id="toggleFeed1" onclick="toggleFeed('feed1', 1)">Turn ON Feed 1</button>
+        <button class="btn btn-off" id="toggleFeed1Off" onclick="toggleFeed('feed1', 0)">Turn OFF Feed 1</button>
+        <button class="btn btn-on" id="toggleFeed2" onclick="toggleFeed('feed2', 1)">Turn ON Feed 2</button>
+        <button class="btn btn-off" id="toggleFeed2Off" onclick="toggleFeed('feed2', 0)">Turn OFF Feed 2</button>
+        <button class="btn btn-on" id="toggleFeed3" onclick="toggleFeed('feed3', 1)">Turn ON Feed 3</button>
+        <button class="btn btn-off" id="toggleFeed3Off" onclick="toggleFeed('feed3', 0)">Turn OFF Feed 3</button>
+        <button class="btn btn-on" id="toggleFeed4" onclick="toggleFeed('feed4', 1)">Turn ON Feed 4</button>
+        <button class="btn btn-off" id="toggleFeed4Off" onclick="toggleFeed('feed4', 0)">Turn OFF Feed 4</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <script>
+        const AIO_USERNAME = "nafij";
+        const AIO_KEY = "aio_MeVq00ozHHJ2qedkNnqqBBcgOzkS";
+        const BASE_URL = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds`;
+
+        async function fetchFeedStates() {
+            const feeds = ['feed1', 'feed2', 'feed3', 'feed4'];
+
+            for (let feed of feeds) {
+                try {
+                    const response = await fetch(`${BASE_URL}/${feed}/data/last`, {
+                        headers: { "X-AIO-Key": AIO_KEY }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch ${feed}. Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const state = data.value;
+                    console.log(`Current state of ${feed}: ${state}`);
+                    updateButtonColors(feed, state);
+                } catch (error) {
+                    console.error(`Error fetching feed state for ${feed}:`, error);
+                }
+            }
+        }
+
+        async function toggleFeed(feedName, value) {
+            try {
+                const response = await fetch(`${BASE_URL}/${feedName}/data`, {
+                    method: 'POST',
+                    headers: {
+                        "X-AIO-Key": AIO_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ "value": value.toString() })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to update feed. Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log(`Feed updated: ${feedName}, new state: ${data.value}`);
+                updateButtonColors(feedName, data.value);
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById("status").innerText = `Error: ${error.message}`;
+            }
+        }
+
+        function updateButtonColors(feedName, state) {
+            const onButton = document.getElementById(`toggle${capitalize(feedName)}`);
+            const offButton = document.getElementById(`toggle${capitalize(feedName)}Off`);
+
+            if (state === "1") {
+                onButton.style.backgroundColor = "#4CAF50";
+                offButton.style.backgroundColor = "#00BCD4";
+            } else {
+                onButton.style.backgroundColor = "#3E5D5F";
+                offButton.style.backgroundColor = "#D32F2F";
+            }
+        }
+
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchFeedStates);
+    </script>
+</body>
+</html>
