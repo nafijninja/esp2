@@ -4,171 +4,125 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Lights & Fans</title>
-    <link rel="icon" type="image/x-icon" href="icon.png">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <style>
-        /* General Reset */
-        body, h1, p {
-            margin: 0;
-            padding: 0;
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f4f4; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            text-align: center; 
         }
-
-        body {
-            font-family: 'Roboto', Arial, sans-serif;
-            background: linear-gradient(135deg, #141e30, #243b55);
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 100vh;
-            text-align: center;
+        .button-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 10px;
         }
-
-        h1 {
-            margin-top: 50px;
-            font-size: 2.4rem;
-            font-weight: bold;
-            color: #f4f4f4;
-            text-shadow: 0px 4px 10px rgba(0, 0, 0, 0.6);
+        .btn { 
+            padding: 15px 30px; 
+            font-size: 18px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            width: 200px;
+            transition: background 0.3s;
         }
-
-        .button-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            padding: 30px 20px;
-            width: 85%;
-            max-width: 400px;
-            margin: 0 auto;
+        .on { background-color: green; color: white; }
+        .off { background-color: black; color: white; }
+        .footer { 
+            background-color: black; 
+            color: white; 
+            text-align: center; 
+            padding: 10px; 
+            position: fixed; 
+            width: 100%; 
+            bottom: 0; 
         }
-
-        .btn {
-            padding: 10px 15px;
-            font-size: 1rem;
-            border: none;
-            border-radius: 20px; /* Rounded button corners */
-            cursor: pointer;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-            width: 150px;
-            height: 50px;
-            text-align: center;
-        }
-
-        .btn-on {
-            background-color: #4caf50;
-        }
-
-        .btn-off {
-            background-color: #d32f2f;
-        }
-
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.4);
-        }
-
-        .btn:active {
-            transform: scale(1);
-        }
-
-        footer {
-            background-color: #101010;
-            color: #cccccc;
-            text-align: center;
-            padding: 15px 0;
-            font-size: 0.85rem;
-        }
-
-        footer a {
-            color: #4caf50;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
+        .footer a { color: white; text-decoration: none; font-weight: bold; }
+        .footer a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <h1>Control Lights & Fans</h1>
-    <div class="button-container">
-        <button class="btn btn-on" onclick="toggleFeed('feed1', 1)">Turn ON Feed 1</button>
-        <button class="btn btn-off" onclick="toggleFeed('feed1', 0)">Turn OFF Feed 1</button>
-        <button class="btn btn-on" onclick="toggleFeed('feed2', 1)">Turn ON Feed 2</button>
-        <button class="btn btn-off" onclick="toggleFeed('feed2', 0)">Turn OFF Feed 2</button>
-        <button class="btn btn-on" onclick="toggleFeed('feed3', 1)">Turn ON Feed 3</button>
-        <button class="btn btn-off" onclick="toggleFeed('feed3', 0)">Turn OFF Feed 3</button>
-        <button class="btn btn-on" onclick="toggleFeed('feed4', 1)">Turn ON Feed 4</button>
-        <button class="btn btn-off" onclick="toggleFeed('feed4', 0)">Turn OFF Feed 4</button>
-    </div>
-    <footer>
-        Designed by <a href="https://www.google.com" target="_blank">Nafij</a>. © 2025 All Rights Reserved.
-    </footer>
-    <script>
-        const AIO_USERNAME = "nafij";
-        const AIO_KEY = "aio_gmEP34E8cGzLzXsnpaafA6YHqhXK";
-        const BASE_URL = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds`;
 
-        async function toggleFeed(feed, value) {
+    <div class="button-container">
+        <button class="btn off" id="feed1" onclick="toggleFeed('feed1')">Feed 1</button>
+        <button class="btn off" id="feed2" onclick="toggleFeed('feed2')">Feed 2</button>
+        <button class="btn off" id="feed3" onclick="toggleFeed('feed3')">Feed 3</button>
+        <button class="btn off" id="feed4" onclick="toggleFeed('feed4')">Feed 4</button>
+    </div>
+
+    <div class="footer">
+        Created by <a href="https://google.com" target="_blank">NAFIJ</a>
+    </div>
+
+    <script>
+        const backendURL = "https://ninja.up.railway.app";  // Replace with your backend URL
+        const socket = io(backendURL);
+
+        // Fetch feed states every 5 seconds
+        setInterval(getFeedStatus, 5000);
+
+        // Fetch feed states on page load
+        async function getFeedStatus() {
+            ['feed1', 'feed2', 'feed3', 'feed4'].forEach(async (feed) => {
+                try {
+                    const response = await fetch(`${backendURL}/feed-status?feed=${feed}`);
+                    const data = await response.json();
+                    updateButtonStatus(feed, data.value);
+                } catch (error) {
+                    console.error("Error fetching feed status:", error);
+                }
+            });
+        }
+
+        // Toggle feed state
+        async function toggleFeed(feed) {
+            const button = document.getElementById(feed);
+            const newValue = button.classList.contains("on") ? 0 : 1;
+
             try {
-                const response = await fetch(`${BASE_URL}/${feed}/data`, {
-                    method: "POST",
-                    headers: {
-                        "X-AIO-Key": AIO_KEY,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ value: value.toString() }),
+                const response = await fetch(`${backendURL}/toggle-feed`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ feed, value: newValue })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Failed to update ${feed}. Status: ${response.status}`);
+                if (response.ok) {
+                    updateButtonStatus(feed, newValue);
+                } else {
+                    console.error("Failed to update feed.");
                 }
-
-                console.log(`${feed} updated to ${value}`);
-                updateButtonState(feed, value);
             } catch (error) {
-                console.error(`Error updating ${feed}:`, error);
-                alert(`Error: ${error.message}`);
+                console.error("Error toggling feed:", error);
             }
         }
 
-        function updateButtonState(feed, state) {
-            const onButton = document.querySelector(`button[onclick="toggleFeed('${feed}', 1)"]`);
-            const offButton = document.querySelector(`button[onclick="toggleFeed('${feed}', 0)"]`);
-
-            if (state === "1" || state === 1) {
-                onButton.style.backgroundColor = "#4caf50";
-                offButton.style.backgroundColor = "#00bcd4";
+        // Update button colors dynamically
+        function updateButtonStatus(feed, value) {
+            const button = document.getElementById(feed);
+            if (value === 1) {
+                button.classList.add("on");
+                button.classList.remove("off");
             } else {
-                onButton.style.backgroundColor = "#3e5d5f";
-                offButton.style.backgroundColor = "#d32f2f";
+                button.classList.add("off");
+                button.classList.remove("on");
             }
         }
 
-        async function fetchFeedStates() {
-            const feeds = ["feed1", "feed2", "feed3", "feed4"];
-            for (const feed of feeds) {
-                try {
-                    const response = await fetch(`${BASE_URL}/${feed}/data/last`, {
-                        headers: { "X-AIO-Key": AIO_KEY },
-                    });
+        // Listen for real-time updates from WebSocket
+        socket.on("feed-updated", ({ feed, value }) => {
+            updateButtonStatus(feed, value);
+        });
 
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch ${feed}. Status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    updateButtonState(feed, data.value);
-                } catch (error) {
-                    console.error(`Error fetching state for ${feed}:`, error);
-                }
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", fetchFeedStates);
+        // Load initial feed statuses
+        getFeedStatus();
     </script>
 </body>
 </html>
